@@ -1,0 +1,26 @@
+#cloud-config
+
+coreos:
+  ssh-authorized-keys:
+    - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQD3xIEP1QDn+LnNnEDrXRxBiNK9cSrih1gXRFcQU2EEXaLu8dj2/U2UPhn4fqiU5CNKaAiauot15LBrHn8YOe2pggAiOnBfQP0YRkm/sprhmsuNiVmsHx5YLXerhym0CVzdUxVKhgfRqVtq/e0Q7Dy4VzMcBF0EUuUtAKpKHz/yMq3KSwbK70fLRw27TgHvZyAtbNOeZZXNFmy0Wcb9HBU/OGlv0jjii95vXvbxhxtFlovE1v8bYKUkGeuy3vdDXQTvPAmG05ewbEDA+zYJc8VIom8od9zuKiY9g+iSCW5a4XXhdNMS2cdSMvkyC9/htw1k38uK5ubpd2jivwdT/9NV do-sfo1-docker@digitalocean.com
+  update:
+    # 'best-effort' will take a lock if etcd cluster is up, reboot otherwise
+    reboot-strategy: "reboot"
+  etcd2:
+    # generate a new token for each unique cluster from:
+    # curl "https://discovery.etcd.io/new?size=1"
+    discovery: https://discovery.etcd.io/3a115190d6c3d14da05523a9ff0176b6
+    # multi-region deployments, multi-cloud deployments, and Droplets without
+    # private networking need to use $public_ipv4:
+    advertise-client-urls: http://$private_ipv4:2379,http://$private_ipv4:4001
+    initial-advertise-peer-urls: http://$private_ipv4:2380
+    # listen on the official ports 2379, 2380 and one legacy port 4001:
+    listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
+    listen-peer-urls: http://$private_ipv4:2380
+  fleet:
+    public-ip: $private_ipv4   # used for fleetctl ssh command
+  units:
+    - name: etcd2.service
+      command: start
+    - name: fleet.service
+      command: start
