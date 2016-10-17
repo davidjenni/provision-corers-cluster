@@ -1,15 +1,16 @@
 #cloud-config
 
+# see also: https://coreos.com/os/docs/latest/cloud-config.html
 coreos:
   ssh-authorized-keys:
-    - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQD3xIEP1QDn+LnNnEDrXRxBiNK9cSrih1gXRFcQU2EEXaLu8dj2/U2UPhn4fqiU5CNKaAiauot15LBrHn8YOe2pggAiOnBfQP0YRkm/sprhmsuNiVmsHx5YLXerhym0CVzdUxVKhgfRqVtq/e0Q7Dy4VzMcBF0EUuUtAKpKHz/yMq3KSwbK70fLRw27TgHvZyAtbNOeZZXNFmy0Wcb9HBU/OGlv0jjii95vXvbxhxtFlovE1v8bYKUkGeuy3vdDXQTvPAmG05ewbEDA+zYJc8VIom8od9zuKiY9g+iSCW5a4XXhdNMS2cdSMvkyC9/htw1k38uK5ubpd2jivwdT/9NV do-sfo1-docker@digitalocean.com
+    - {{DO_SSH_PUB_KEY}}
   update:
     # 'best-effort' will take a lock if etcd cluster is up, reboot otherwise
     reboot-strategy: "reboot"
   etcd2:
     # generate a new token for each unique cluster from:
     # curl "https://discovery.etcd.io/new?size=1"
-    discovery: https://discovery.etcd.io/3a115190d6c3d14da05523a9ff0176b6
+    discovery: {{ETCD_DISCOVERY_URL}}
     # multi-region deployments, multi-cloud deployments, and Droplets without
     # private networking need to use $public_ipv4:
     advertise-client-urls: http://$private_ipv4:2379,http://$private_ipv4:4001
@@ -24,3 +25,45 @@ coreos:
       command: start
     - name: fleet.service
       command: start
+    - name: iptables-restore.service
+      enable: true
+      command: start
+    - name: ip6tables-restore.service
+      enable: true
+      command: start
+
+write_files:
+  - path: /var/lib/iptables/rules-save
+    permissions: 0644
+    owner: 'root:root'
+    content: |
+      *filter
+      :INPUT DROP [0:0]
+      :FORWARD DROP [0:0]
+      :OUTPUT ACCEPT [0:0]
+      -A INPUT -i lo -j ACCEPT
+      -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+      -A INPUT -p tcp -m tcp --dport 22 -j ACCEPT
+      -A INPUT -p tcp -m tcp --dport 80 -j ACCEPT
+      -A INPUT -p tcp -m tcp --dport 443 -j ACCEPT
+      -A INPUT -p icmp -m icmp --icmp-type 0 -m limit --limit 300/min -j ACCEPT
+      -A INPUT -p icmp -m icmp --icmp-type 3 -m limit --limit 300/min -j ACCEPT
+      -A INPUT -p icmp -m icmp --icmp-type 11 -m limit --limit 300/min -j ACCEPT
+      COMMIT
+  - path: /var/lib/ip6tables/rules-save
+    permissions: 0644
+    owner: 'root:root'
+    content: |
+      *filter
+      :INPUT DROP [0:0]
+      :FORWARD DROP [0:0]
+      :OUTPUT ACCEPT [0:0]
+      -A INPUT -i lo -j ACCEPT
+      -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+      -A INPUT -p tcp -m tcp --dport 22 -j ACCEPT
+      -A INPUT -p tcp -m tcp --dport 80 -j ACCEPT
+      -A INPUT -p tcp -m tcp --dport 443 -j ACCEPT
+      -A INPUT -p ipv6-icmp -j ACCEPT
+      COMMIT
+
+      # EOF
