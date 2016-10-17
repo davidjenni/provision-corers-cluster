@@ -46,9 +46,7 @@ write_files:
       -A INPUT -p tcp -m tcp --dport 22 -j ACCEPT
       -A INPUT -p tcp -m tcp --dport 80 -j ACCEPT
       -A INPUT -p tcp -m tcp --dport 443 -j ACCEPT
-      -A INPUT -p icmp -m icmp --icmp-type 0 -m limit --limit 300/min -j ACCEPT
-      -A INPUT -p icmp -m icmp --icmp-type 3 -m limit --limit 300/min -j ACCEPT
-      -A INPUT -p icmp -m icmp --icmp-type 11 -m limit --limit 300/min -j ACCEPT
+      -A INPUT -p icmp -m limit --limit 300/min -j ACCEPT
       COMMIT
   - path: /var/lib/ip6tables/rules-save
     permissions: 0644
@@ -63,7 +61,7 @@ write_files:
       -A INPUT -p tcp -m tcp --dport 22 -j ACCEPT
       -A INPUT -p tcp -m tcp --dport 80 -j ACCEPT
       -A INPUT -p tcp -m tcp --dport 443 -j ACCEPT
-      -A INPUT -p ipv6-icmp -j ACCEPT
+      -A INPUT -p ipv6-icmp -m limit --limit 300/min -j ACCEPT
       COMMIT
 
       # EOF
