@@ -1,6 +1,19 @@
 #!/bin/sh
 DO_REGION=${DO_REGION:="sfo1"}
 DO_SIZE=${DO_SIZE:="512mb"}
+DO_DROPLET_BASENAME=${DO_DROPLET_BASENAME:="coreos"}
+
+# number of droplets to create:
+for i in {1..3}
+do
+    if [ $i -eq 1 ]; then
+        _DROPLETS=\"${DO_DROPLET_BASENAME}1\"
+    else
+        _DROPLETS=${_DROPLETS},\"${DO_DROPLET_BASENAME}$i\"
+    fi
+    _NUM_DROPLETS=$i
+done
+
 _CLOUD_CONFIG=${CLOUD_CONFIG:="cloud-config.yaml"}
 _CLOUD_CONFIG_GEN=$(basename -s .yaml ${_CLOUD_CONFIG}).gen.yaml
 
@@ -17,7 +30,7 @@ _DO_SSH_KEY_ID=$(ssh-keygen -l -E md5 -f ${DO_SSH_PUB_KEY_FILE} | cut -d ' ' -f 
 _DO_SSH_PUB_KEY_CONTENT=$(cat ${DO_SSH_PUB_KEY_FILE})
 
 echo Getting etcd discovery token...
-_ETCD_DISCOVERY=$(curl -w "\n" "https://discovery.etcd.io/new?size=1")
+_ETCD_DISCOVERY=$(curl -w "\n" "https://discovery.etcd.io/new?size=${_NUM_DROPLETS}")
 echo got: ${_ETCD_DISCOVERY}
 
 sed \
@@ -30,11 +43,11 @@ curl -X POST "https://api.digitalocean.com/v2/droplets" \
      --header "Content-Type: application/json" \
      --header "Authorization: Bearer ${DO_TOKEN}" \
      --data '{"region":"'"${DO_REGION}"'",
+        "names":[ '"${_DROPLETS}"' ],
         "image":"coreos-stable",
         "size":"'"${DO_SIZE}"'",
         "ssh_keys":["'"${_DO_SSH_KEY_ID}"'"],
         "ipv6": true,
         "private_networking": true,
-        "name":"coreos1",
         "user_data": "'"$(cat ${_CLOUD_CONFIG_GEN} | sed 's/\"/\\\"/g')"'" }'
 
